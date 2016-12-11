@@ -36,17 +36,29 @@ func postScoreHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ctx := appengine.NewContext(r)
 
-	name := strings.TrimSpace(vars["name"])
-	if len(name) == 0 {
+	nameData, err := base64.RawURLEncoding.DecodeString(vars["name"])
+	if err != nil {
+		responseError(w, "Invalid name", http.StatusBadRequest)
+		return
+	}
+	name := strings.TrimSpace(string(nameData))
+
+	if len(name) < 4 || len(name) > 12 {
 		responseError(w, "Invalid name", http.StatusBadRequest)
 		return
 	}
 
-	password := vars["password"]
-	if len(password) < 4 {
+	passwordData, err := base64.RawURLEncoding.DecodeString(vars["password"])
+	if err != nil {
 		responseError(w, "Invalid password", http.StatusBadRequest)
 		return
 	}
+	password := strings.TrimSpace(string(passwordData))
+	if len(password) < 4 || len(password) > 32 {
+		responseError(w, "Invalid password", http.StatusBadRequest)
+		return
+	}
+
 	hasher := sha512.New()
 	hasher.Write([]byte(password))
 	passwordHash := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
@@ -84,6 +96,10 @@ func postScoreHandler(w http.ResponseWriter, r *http.Request) {
 	responseJSON(w, nil)
 }
 
+type GetScoresResult struct {
+	Players []Player `json:"players"`
+}
+
 func getScoresHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := appengine.NewContext(r)
 
@@ -91,6 +107,6 @@ func getScoresHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err := datastore.NewQuery("Player").Order("-Score").GetAll(ctx, &players); err != nil {
 		responseError(w, err.Error(), http.StatusInternalServerError)
 	} else {
-		responseJSON(w, players)
+		responseJSON(w, GetScoresResult{players})
 	}
 }
