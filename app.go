@@ -36,7 +36,27 @@ func postScoreHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ctx := appengine.NewContext(r)
 
-	nameData, err := base64.RawURLEncoding.DecodeString(vars["name"])
+	nameStr := vars["name"]
+	passwordStr := vars["password"]
+
+	if len(nameStr)%4 == 2 {
+		nameStr += "=="
+	} else if len(nameStr)%4 == 3 {
+		nameStr += "="
+	}
+
+	if len(passwordStr)%4 == 2 {
+		passwordStr += "=="
+	} else if len(passwordStr)%4 == 3 {
+		passwordStr += "="
+	}
+
+	nameStr = strings.Replace(nameStr, "_", "/", -1)
+	nameStr = strings.Replace(nameStr, "-", "+", -1)
+	passwordStr = strings.Replace(passwordStr, "_", "/", -1)
+	passwordStr = strings.Replace(passwordStr, "-", "+", -1)
+
+	nameData, err := base64.StdEncoding.DecodeString(nameStr)
 	if err != nil {
 		responseError(w, "Invalid name", http.StatusBadRequest)
 		return
@@ -48,7 +68,7 @@ func postScoreHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	passwordData, err := base64.RawURLEncoding.DecodeString(vars["password"])
+	passwordData, err := base64.StdEncoding.DecodeString(passwordStr)
 	if err != nil {
 		responseError(w, "Invalid password", http.StatusBadRequest)
 		return
